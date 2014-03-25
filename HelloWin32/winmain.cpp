@@ -4,6 +4,7 @@
 #include <string>
 #include <tchar.h>
 #include "resource.h"
+#include <commdlg.h>
 
 static TCHAR szWindowClass[] = _T("win32app");
 static TCHAR szTitle[] = _T("My first WinAPI App");
@@ -14,7 +15,7 @@ const int WND_WIDTH = 600;
 const int WND_HEIGHT = 400;
 
 LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam);
-INT_PTR CALLBACK	About(HWND, UINT, WPARAM, LPARAM);
+INT_PTR CALLBACK About(HWND, UINT, WPARAM, LPARAM);
 
 HWND initWindow(HINSTANCE hInstance) {
     WNDCLASS wc;
@@ -70,7 +71,7 @@ enum MyColor {
 const COLORREF colors[_N_COLORS] = { RGB(0, 0, 0), RGB(0, 255, 0), RGB(255, 0, 0), RGB(255,255,255) };
 HPEN pens[_N_COLORS];
 HBRUSH brushes[_N_COLORS];
-HFONT fonts[_N_COLORS];
+//COLORREF fonts[_N_COLORS];
 
 int menuPenColor[_N_COLORS];
 int menuBrushColor[_N_COLORS];
@@ -81,10 +82,13 @@ MyColor currentPenColor = COL_BLACK;
 MyColor currentBrushColor = COL_WHITE;
 MyColor currentFontColor = COL_BLACK;
 
+COLORREF currentFontCOLORREF = RGB(0, 0, 0);
+
 HFONT hFontDef = NULL;
 HFONT hFontCur = NULL;
 HFONT hFontSome = CreateFont(20, 0, 0, 0, FW_DONTCARE, FALSE, FALSE, FALSE, DEFAULT_CHARSET, OUT_OUTLINE_PRECIS,
     CLIP_DEFAULT_PRECIS, CLEARTYPE_QUALITY, VARIABLE_PITCH, TEXT("Arial Black"));
+
 HBRUSH hBrushCur = NULL;
 HBRUSH hBrushDef = NULL;
 HBRUSH hBrushSolidDef = CreateSolidBrush(RGB(255,255,255));
@@ -92,7 +96,6 @@ HBRUSH hBrushSolidDef = CreateSolidBrush(RGB(255,255,255));
 HPEN hPenCur = NULL;
 HPEN hPenDef = NULL;
 HPEN hPenSolid = CreatePen(PS_SOLID, 0, RGB(0, 0, 0));
-
 
 int curXPos = 0;
 int curYPos = 0;
@@ -118,6 +121,12 @@ void initColors() {
     menuFontColor[COL_WHITE] = ID_FONT_WHITE;
 }
 
+CHOOSECOLOR cc;                 // common dialog box structure
+const COLORREF WH = RGB(255, 255, 255);
+static COLORREF acrCustClr[16] = { WH, WH, WH, WH, WH, WH, WH, WH, WH, WH, WH, WH, WH, WH, WH, WH }; // array of custom colors 
+//static DWORD rgbCurrent;        // initial color selection
+
+
 int APIENTRY _tWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPTSTR lpCmdLine, int nCmdShow) {
     
     UNREFERENCED_PARAMETER(hPrevInstance);
@@ -134,6 +143,16 @@ int APIENTRY _tWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPTSTR lpCm
 
         return 1;
     }
+
+    // Initialize CHOOSECOLOR 
+    ZeroMemory(&cc, sizeof(cc));
+    cc.lStructSize = sizeof(cc);
+    cc.hwndOwner = hWnd;
+    cc.lpCustColors = (LPDWORD)acrCustClr;
+    //cc.rgbResult = rgbCurrent;
+    cc.rgbResult = RGB(255,255,255);
+    cc.Flags = /*CC_FULLOPEN |*/ CC_RGBINIT;
+
     initColors();
     // The parameters to ShowWindow explained:
     // hWnd: the value returned from CreateWindow
@@ -170,6 +189,10 @@ void setMenuChecks(HWND hWnd, int (&menuItemsColor)[SIZE], MyColor currentColor)
         CheckMenuItem(GetMenu(hWnd), menuItemsColor[i], checked);
     }
 }
+
+bool chooseBrushFromArr = true;
+bool choosePenFromArr = true;
+bool chooseFontFromArr = true;
 
 LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam){
     PAINTSTRUCT ps;
@@ -222,6 +245,47 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam){
             redrawWindow(hWnd);
             setMenuChecks(hWnd, menuBrushColor, currentBrushColor);
             break;
+        case ID_BRUSH_S_CHOOSECOLOR:
+            if (ChooseColor(&cc) == TRUE) {
+                hBrushCur = CreateSolidBrush(cc.rgbResult);
+                //rgbCurrent = cc.rgbResult;
+                chooseBrushFromArr = false;
+            }
+            for (int i = 0; i < sizeof(menuBrushColor)/sizeof(int); ++i) {
+                CheckMenuItem(GetMenu(hWnd), menuBrushColor[i], MF_UNCHECKED);
+            }
+            redrawWindow(hWnd);
+            break;
+        case ID_FONT_BLACK:
+            currentFontColor = COL_BLACK;
+            redrawWindow(hWnd);
+            setMenuChecks(hWnd, menuFontColor, currentFontColor);
+            break;
+        case ID_FONT_GREEN:
+            currentFontColor = COL_GREEN;
+            redrawWindow(hWnd);
+            setMenuChecks(hWnd, menuFontColor, currentFontColor);
+            break;
+        case ID_FONT_RED:
+            currentFontColor = COL_RED;
+            redrawWindow(hWnd);
+            setMenuChecks(hWnd, menuFontColor, currentFontColor);
+            break;
+        case ID_FONT_WHITE:
+            currentFontColor = COL_WHITE;
+            redrawWindow(hWnd);
+            setMenuChecks(hWnd, menuFontColor, currentFontColor);
+            break;
+        case ID_FONT_CHOOSECOLOR:
+            if (ChooseColor(&cc) == TRUE) {
+                currentFontCOLORREF = cc.rgbResult;
+                //rgbCurrent = cc.rgbResult;
+                chooseBrushFromArr = false;
+            }
+            for (int i = 0; i < sizeof(menuBrushColor) / sizeof(int); ++i) {
+                CheckMenuItem(GetMenu(hWnd), menuBrushColor[i], MF_UNCHECKED);
+            }
+            break;
         case ID_HELP:
             MessageBox(hWnd,
                 _T("This is the short help"),
@@ -245,7 +309,12 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam){
         hdc = BeginPaint(hWnd, &ps);
         
         SelectObject(hdc, pens[currentPenColor]);
-        SelectObject(hdc, brushes[currentBrushColor]);
+        if (chooseBrushFromArr) {
+            SelectObject(hdc, brushes[currentBrushColor]);
+        } else {
+            SelectObject(hdc, hBrushCur);
+            chooseBrushFromArr = true;
+        }
         //SelectObject(hdc, brushes[currentBrushColor]);
         //SelectObject(hdc, fonts[currentFontColor]);
         //SetTextColor(hdc, fonts[currentColor]);
@@ -262,8 +331,10 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam){
         //_stprintf_s(tmp, _T("%d"), GetTextAlign(hdc));
         //FillRect(hdc, &coordRect, GetSysColorBrush(COLOR_WINDOW));
         SelectObject(hdc, hFontSome);
+        SetTextColor(hdc, colors[currentFontColor]);
         TextOut(hdc, 50, 50, _T("lala"), _tcslen(_T("lala")));
         SelectObject(hdc, hFontDef);
+        SetTextColor(hdc, colors[COL_BLACK]);
         TextOut(hdc, coordRect.left, coordRect.top, coordStr, _tcslen(coordStr));
         //TextOut(hdc, 5, 200, tmp, _tcslen(tmp));
         EndPaint(hWnd, &ps);
